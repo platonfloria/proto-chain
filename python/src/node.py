@@ -16,7 +16,7 @@ from blockchain import BlockChain
 from transaction import Transaction, SignedTransaction
 
 
-DIFFICULTY = 16
+DIFFICULTY = 21
 
 
 class Runtime:
@@ -74,10 +74,11 @@ class Runtime:
         while not self._stop:
             self._interrupt_mining_event.clear()
             next_block = self._form_next_block()
-            next_block.find_solution(self._interrupt_mining_event)
+            solution = next_block.find_solution(self._interrupt_mining_event)
             if not self._interrupt_mining_event.is_set():
                 print("BLOCK_FOUND", next_block.number)
                 signed_block = self._account.sign_block(next_block)
+                signed_block.set_solution(solution)
                 for queue in self._block_queues:
                     queue.put(signed_block)
                 self._append_block(signed_block)
@@ -103,8 +104,10 @@ class Runtime:
         reward = Transaction(None, self._account.address, 100, "")
         signed_reward = self._account.sign_transaction(reward)
         block = Block(0, None, DIFFICULTY, signed_reward)
-        block.find_solution(None)
-        return self._account.sign_block(block)
+        solution = block.find_solution(None)
+        signed_block = self._account.sign_block(block)
+        signed_block.set_solution(solution)
+        return signed_block
 
     def _form_next_block(self):
         reward = Transaction(None, self._account.address, 100, "")

@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\trpc.proto\x12\x03rpc\"_\n\x0bTransaction\x12\x0e\n\x06origin\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65stination\x18\x02 \x01(\t\x12\x0e\n\x06\x61mount\x18\x03 \x01(\r\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\t\x12\r\n\x05nonce\x18\x05 \x01(\r\"M\n\x11SignedTransaction\x12%\n\x0btransaction\x18\x01 \x01(\x0b\x32\x10.rpc.Transaction\x12\x11\n\tsignature\x18\x02 \x01(\t\"\xb0\x01\n\x05\x42lock\x12\x0e\n\x06number\x18\x01 \x01(\r\x12\x1b\n\x13previous_block_hash\x18\x02 \x01(\t\x12,\n\x0ctransactions\x18\x03 \x03(\x0b\x32\x16.rpc.SignedTransaction\x12\x12\n\ndifficulty\x18\x04 \x01(\r\x12\x10\n\x08solution\x18\x05 \x01(\r\x12&\n\x06reward\x18\x06 \x01(\x0b\x32\x16.rpc.SignedTransaction\";\n\x0bSignedBlock\x12\x19\n\x05\x62lock\x18\x01 \x01(\x0b\x32\n.rpc.Block\x12\x11\n\tsignature\x18\x02 \x01(\t\".\n\nBlockChain\x12 \n\x06\x62locks\x18\x01 \x03(\x0b\x32\x10.rpc.SignedBlock\"\x18\n\x16TransactionFeedRequest\"\x12\n\x10\x42lockFeedRequest\"\x1e\n\x0bSyncRequest\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t2\xb2\x01\n\x03RPC\x12H\n\x0fTransactionFeed\x12\x1b.rpc.TransactionFeedRequest\x1a\x16.rpc.SignedTransaction0\x01\x12\x36\n\tBlockFeed\x12\x15.rpc.BlockFeedRequest\x1a\x10.rpc.SignedBlock0\x01\x12)\n\x04Sync\x12\x10.rpc.SyncRequest\x1a\x0f.rpc.BlockChainb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\trpc.proto\x12\x03rpc\"_\n\x0bTransaction\x12\x0e\n\x06origin\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65stination\x18\x02 \x01(\t\x12\x0e\n\x06\x61mount\x18\x03 \x01(\r\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\t\x12\r\n\x05nonce\x18\x05 \x01(\r\"M\n\x11SignedTransaction\x12%\n\x0btransaction\x18\x01 \x01(\x0b\x32\x10.rpc.Transaction\x12\x11\n\tsignature\x18\x02 \x01(\t\"\x9e\x01\n\x05\x42lock\x12\x0e\n\x06number\x18\x01 \x01(\r\x12\x1b\n\x13previous_block_hash\x18\x02 \x01(\t\x12,\n\x0ctransactions\x18\x03 \x03(\x0b\x32\x16.rpc.SignedTransaction\x12\x12\n\ndifficulty\x18\x04 \x01(\r\x12&\n\x06reward\x18\x05 \x01(\x0b\x32\x16.rpc.SignedTransaction\"M\n\x0bSignedBlock\x12\x19\n\x05\x62lock\x18\x01 \x01(\x0b\x32\n.rpc.Block\x12\x10\n\x08solution\x18\x02 \x01(\r\x12\x11\n\tsignature\x18\x03 \x01(\t\".\n\nBlockChain\x12 \n\x06\x62locks\x18\x01 \x03(\x0b\x32\x10.rpc.SignedBlock\"\x18\n\x16TransactionFeedRequest\"\x12\n\x10\x42lockFeedRequest\"\x1e\n\x0bSyncRequest\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t2\xb2\x01\n\x03RPC\x12H\n\x0fTransactionFeed\x12\x1b.rpc.TransactionFeedRequest\x1a\x16.rpc.SignedTransaction0\x01\x12\x36\n\tBlockFeed\x12\x15.rpc.BlockFeedRequest\x1a\x10.rpc.SignedBlock0\x01\x12)\n\x04Sync\x12\x10.rpc.SyncRequest\x1a\x0f.rpc.BlockChainb\x06proto3')
 
 
 
@@ -91,8 +91,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _SIGNEDTRANSACTION._serialized_start=115
   _SIGNEDTRANSACTION._serialized_end=192
   _BLOCK._serialized_start=195
-  _BLOCK._serialized_end=371
-  _SIGNEDBLOCK._serialized_start=373
+  _BLOCK._serialized_end=353
+  _SIGNEDBLOCK._serialized_start=355
   _SIGNEDBLOCK._serialized_end=432
   _BLOCKCHAIN._serialized_start=434
   _BLOCKCHAIN._serialized_end=480

@@ -14,7 +14,6 @@ class Block:
         self._previous_block_hash = previous_block_hash
         self._transactions = []
         self._difficulty = difficulty
-        self._solution = None
         self._reward = reward
         self._deltas = {reward.transaction.destination: reward.transaction.amount}
 
@@ -26,9 +25,6 @@ class Block:
         self._deltas[destination] = self._deltas.get(destination, 0) + amount
         self._transactions.append(signed_transactions)
 
-    def set_solution(self, solution):
-        self._solution = solution
-
     @property
     def number(self):
         return self._number
@@ -38,22 +34,22 @@ class Block:
         return self._previous_block_hash
 
     @property
-    def reward(self):
-        return self._reward
-
-    @property
     def transactions(self):
         return self._transactions
 
     @property
-    def hash(self):
-        m = sha256()
-        m.update(self.pb.SerializeToString())
-        return m.hexdigest()
+    def reward(self):
+        return self._reward
 
     @property
     def deltas(self):
         return self._deltas
+
+    @cached_property
+    def hash(self):
+        m = sha256()
+        m.update(self.pb.SerializeToString())
+        return m.hexdigest()
 
     @property
     def pb(self):
@@ -62,7 +58,6 @@ class Block:
             previous_block_hash=self._previous_block_hash,
             transactions=[t.pb for t in self._transactions],
             difficulty=self._difficulty,
-            solution=self._solution,
             reward=self._reward.pb
         )
 
@@ -76,17 +71,27 @@ class Block:
         )
         for transaction in pb.transactions:
             inst.append_transaction(SignedTransaction.from_pb(transaction))
-        inst.set_solution(pb.solution)
         return inst
 
     def find_solution(self, interrupt_event):
         if self._previous_block_hash is None:
-            self._solution = 0
-            return
+            return 0
         else:
             candidate = 0
-            while not self._check_solution(candidate) and not interrupt_event.is_set():
+            while not self.check_solution(candidate) and not interrupt_event.is_set():
                 candidate += 1
+            return candidate
+
+    def check_solution(self, solution):
+        if self._previous_block_hash is None and self._number == 0:
+            return True
+        else:
+            base = sha256()
+            base.update(bytes.fromhex(self.hash))
+            m = base.copy()
+            m.update(solution.to_bytes(length=4, byteorder='big'))
+            digest = m.digest()
+            return 256 - int.from_bytes(digest, 'big').bit_length() > self._difficulty
 
     @property
     def is_valid(self):
@@ -102,52 +107,40 @@ class Block:
             return False
         if self._previous_block_hash is None and self._number == 0:
             return True
-        return self._check_solution(self._solution)
-
-    @cached_property
-    def _partial_hash(self):
-        m = sha256()
-        m.update(bytes(self._number))
-        m.update(bytes.fromhex(self._previous_block_hash))
-        for t in self._transactions:
-            m.update(t.pb.SerializeToString())
-        m.update(self._reward.pb.SerializeToString())
-        return m
-
-    def _check_solution(self, candidate):
-        m = self._partial_hash.copy()
-        m.update(bytes(candidate))
-        digest = m.digest()
-        if 256 - int.from_bytes(digest, 'big').bit_length() > self._difficulty:
-            self._solution = candidate
-            return True
-        return False
+        return True
 
 
 class SignedBlock:
     def __init__(self, block, signature):
         self._block = block
+        self._solution = None
         self._signature = signature
 
     @property
     def block(self):
         return self._block
 
+    def set_solution(self, solution):
+        self._solution = solution
+
     @property
     def is_valid(self):
         vk = VerifyingKey.from_string(bytes.fromhex(self._block.reward.transaction.destination), SECP256k1, hashfunc=sha256)
-        return vk.verify(bytes.fromhex(self._signature), bytes.fromhex(self._block.hash)) and self._block.is_valid
+        return vk.verify(bytes.fromhex(self._signature), bytes.fromhex(self._block.hash)) and self._block.is_valid and self._block.check_solution(self._solution)
 
     @property
     def pb(self):
         return rpc_pb2.SignedBlock(
             block=self._block.pb,
+            solution=self._solution,
             signature=self._signature
         )
 
     @classmethod
     def from_pb(cls, pb):
-        return cls(
+        inst = cls(
             block=Block.from_pb(pb.block),
             signature=pb.signature
         )
+        inst.set_solution(pb.solution)
+        return inst

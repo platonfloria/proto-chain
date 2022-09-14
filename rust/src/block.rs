@@ -18,7 +18,6 @@ pub struct Block {
     previous_block_hash: Option<String>,
     transactions: Vec<Arc<SignedTransaction>>,
     difficulty: u32,
-    solution: Option<u32>,
     reward: Arc<SignedTransaction>,
     deltas: HashMap<String, i32>,
 }
@@ -35,7 +34,6 @@ impl Block {
             previous_block_hash,
             transactions: Vec::new(),
             difficulty,
-            solution: None,
             reward: Arc::new(reward),
             deltas: HashMap::new(),
         }
@@ -61,23 +59,33 @@ impl Block {
         &self.deltas
     }
 
-    pub fn find_solution(&mut self, interrupt_event: Arc<AtomicBool>) {
+    pub fn find_solution(&mut self, interrupt_event: Arc<AtomicBool>) -> u32 {
         if let None = self.previous_block_hash {
-            self.solution = Some(0);
+            0
         } else {
             let mut candidate = 0;
             while !self.check_solution(candidate) && !interrupt_event.load(Ordering::Relaxed) {
                 candidate += 1;
             }
-            println!("{}", candidate);
+            candidate
         }
     }
+// def find_solution(self, interrupt_event):
+//     if self._previous_block_hash is None:
+//         return 0
+//     else:
+//         candidate = 0
+//         while not self.check_solution(candidate) and not interrupt_event.is_set():
+//             candidate += 1
+//         return candidate
 
-    fn check_solution(&self, candidate: u32) -> bool {
-        let hasher = self.partial_hash();
-        {
-            let mut hasher = hasher.clone();
-            hasher.update(candidate.to_be_bytes());
+    fn check_solution(&self, solution: u32) -> bool {
+        if self.previous_block_hash == None && self.number == 0 {
+            true
+        } else {
+            let mut hasher = Sha256::new();
+            hasher.update(hex::decode(self.hash()).unwrap());
+            hasher.update(solution.to_be_bytes());
             
             let mut zeros = 0;
             for byte in hasher.finalize().to_vec() {
@@ -89,35 +97,18 @@ impl Block {
             zeros > self.difficulty
         }
     }
-//     def _check_solution(self, candidate):
-//         m = self._partial_hash.copy()
-//         m.update(bytes(candidate))
+// def check_solution(self, solution):
+//     if self._previous_block_hash is None and self._number == 0:
+//         return True
+//     else:
+//         base = sha256()
+//         base.update(bytes.fromhex(self.hash))
+//         m = base.copy()
+//         m.update(bytes(solution))
 //         digest = m.digest()
 //         if 256 - int.from_bytes(digest, 'big').bit_length() > self._difficulty:
-//             self._solution = candidate
 //             return True
 //         return False
-
-    fn partial_hash(&self) -> Sha256 {
-        let mut hasher = Sha256::new();
-        hasher.update(self.number.to_be_bytes());
-        hasher.update(hex::decode(self.previous_block_hash.clone().unwrap()).unwrap());
-        for t in &self.transactions {
-            let mut buf = vec![];
-            t.pb().encode(&mut buf).unwrap();
-            hasher.update(&mut buf);
-        }
-        return hasher;
-    }
-//     @cached_property
-//     def _partial_hash(self):
-//         m = sha256()
-//         m.update(bytes(self._number))
-//         m.update(bytes.fromhex(self._previous_block_hash))
-//         for t in self._transactions:
-//             m.update(t.pb.SerializeToString())
-//         m.update(self._reward.pb.SerializeToString())
-//         return m
 
     pub fn append_transaction(&mut self, signed_transaction: Arc<SignedTransaction>) {
         let origin = signed_transaction.transaction().origin().unwrap();
@@ -145,7 +136,6 @@ impl PB<rpc::Block> for Block {
             },
             transactions: self.transactions.iter().map(|t| t.pb()).collect(),
             difficulty: self.difficulty,
-            solution: self.solution.unwrap_or(0),
             reward: Some(self.reward.pb())
         }
     }
@@ -158,9 +148,6 @@ impl PB<rpc::Block> for Block {
 //         self._deltas[origin] = self._deltas.get(origin, 0) - amount
 //         self._deltas[destination] = self._deltas.get(destination, 0) + amount
 //         self._transactions.append(signed_transactions)
-
-//     def set_solution(self, solution):
-//         self._solution = solution
 
 //     @property
 //     def dict(self):
@@ -209,7 +196,6 @@ impl PB<rpc::Block> for Block {
 //         )
 //         for transaction in pb.transactions:
 //             inst.append_transaction(SignedTransaction.from_pb(transaction))
-//         inst.set_solution(pb.solution)
 //         return inst
 
 //     def find_solution(self, interrupt_event):
@@ -260,6 +246,7 @@ impl PB<rpc::Block> for Block {
 
 pub struct SignedBlock {
     block: Block,
+    solution: Option<u32>,
     signature: String,
 }
 
@@ -267,6 +254,7 @@ impl SignedBlock {
     pub fn new(block: Block, signature: String) -> Self {
         Self {
             block,
+            solution: None,
             signature,
         }
     }
@@ -275,13 +263,17 @@ impl SignedBlock {
         &self.block
     }
 
+    pub fn set_solution(&mut self, solution: u32) {
+        self.solution = Some(solution);
+    }
+
     pub fn is_valid(&self) -> bool {
         let destination = self.block.reward().transaction().destination();
         let bytes = &hex::decode(destination).unwrap();
         let vk = VerifyingKey::from_sec1_bytes(&bytes).unwrap();
         let signature: Signature = Signature::from_bytes(&hex::decode(&self.signature).unwrap()).unwrap();
         match vk.verify(&hex::decode(self.block.hash()).unwrap(), &signature) {
-            Ok(_) => true,
+            Ok(_) => self.block.check_solution(self.solution.unwrap()),
             Err(_) => false
         }
     }
@@ -295,6 +287,7 @@ impl PB<rpc::SignedBlock> for SignedBlock {
     fn pb(&self) -> rpc::SignedBlock {
         rpc::SignedBlock {
             block: Some(self.block.pb()),
+            solution: self.solution.unwrap_or(0),
             signature: self.signature.clone()
         }
     }

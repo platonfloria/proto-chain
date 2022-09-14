@@ -8,7 +8,7 @@ message Transaction {
     string destination                      = 2;
     uint32 amount                           = 3;
     string data                             = 4;
-    uint32 nonce                             = 5;
+    uint32 nonce                            = 5;
 }
 
 message SignedTransaction {
@@ -17,17 +17,17 @@ message SignedTransaction {
 }
 
 message Block {
-    uint32 number                            = 1;
+    uint32 number                           = 1;
     string previous_block_hash              = 2;
     repeated SignedTransaction transactions = 3;
-    uint32 difficulty                        = 4;
-    uint32 solution                          = 5;
-    SignedTransaction reward                = 6;
+    uint32 difficulty                       = 4;
+    SignedTransaction reward                = 5;
 }
 
 message SignedBlock {
     Block block                             = 1;
-    string signature                        = 2;
+    uint32 solution                         = 2;
+    string signature                        = 3;
 }
 
 message BlockChain {

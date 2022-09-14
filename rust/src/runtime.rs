@@ -129,8 +129,10 @@ impl Runtime {
         );
         let signed_reward = account.sign_transaction(reward);
         let mut block = Block::new(0, None, DIFFICULTY, signed_reward);
-        block.find_solution(self.interrupt_mining_event.clone());
-        account.sign_block(block)
+        let solution = block.find_solution(self.interrupt_mining_event.clone());
+        let mut signed_block = account.sign_block(block);
+        signed_block.set_solution(solution);
+        signed_block
     }
 
     fn append_block(&self, signed_block: SignedBlock) {
@@ -203,10 +205,11 @@ impl Runtime {
     pub fn mine(&self) {
         self.interrupt_mining_event.store(false, Ordering::Relaxed);
         let mut next_block = self.form_next_block();
-        next_block.find_solution(self.interrupt_mining_event.clone());
+        let solution = next_block.find_solution(self.interrupt_mining_event.clone());
         if !self.interrupt_mining_event.load(Ordering::Relaxed) {
             println!("BLOCK FOUND {}", next_block.number());
-            let signed_block = self.account.lock().unwrap().sign_block(next_block);
+            let mut signed_block = self.account.lock().unwrap().sign_block(next_block);
+            signed_block.set_solution(solution);
             self.block_queues.lock().unwrap().retain(|tx| {
                 match tx.blocking_send(Ok(signed_block.pb())) {
                     Ok(_) => true,
