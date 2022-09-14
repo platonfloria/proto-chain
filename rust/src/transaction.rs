@@ -59,13 +59,10 @@ impl Transaction {
 
     fn pb(&self) -> rpc::Transaction {
         rpc::Transaction {
-            origin: match self.origin.clone() {
-                Some(origin) => origin,
-                None => String::new(),
-            },
-            destination: self.destination.clone(),
+            origin: self.origin.as_ref().unwrap_or(&String::new()).to_owned(),
+            destination: self.destination.to_owned(),
             amount: self.amount,
-            data: self.data.clone(),
+            data: self.data.to_owned(),
             nonce: self.nonce.unwrap_or(0)
         }
     }
@@ -130,7 +127,7 @@ impl SignedTransaction {
     pub fn pb(&self) -> rpc::SignedTransaction {
         rpc::SignedTransaction {
             transaction: Some(self.transaction.pb()),
-            signature: self.signature.clone(),
+            signature: self.signature.to_owned(),
         }
     }
 }

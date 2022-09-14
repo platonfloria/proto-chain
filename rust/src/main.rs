@@ -1,9 +1,9 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
+use std::{collections::HashMap, sync::Arc};
 
 use clap::Parser;
 use serde::Deserialize;
 use serde_yaml;
-use tokio::{runtime::Builder, sync::mpsc};
+use tokio::{runtime::Builder, sync::{mpsc, Mutex}};
 
 mod account;
 mod block;
@@ -62,19 +62,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut runtime = Runtime::new(account, transaction_queues.clone(), block_queues.clone(), stop_listener.clone());
     runtime.sync(format!("{}:{}", node.ipaddress, node.rpc_port), peers);
 
+    let async_runtime = Arc::new(Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap());
+
     let runtime = Arc::new(runtime);
     let (runtime_task, runtime_thread) = Runtime::run(
         runtime.clone(),
+        async_runtime.clone(),
         txn_receiver,
     );
 
-    let rpc_server = rpc::RPC::new(&node.rpc_port.to_string(), runtime.clone(), transaction_queues.clone(), block_queues.clone(), stop_listener.clone());
-    let api_server = api::API::new(&node.api_port.to_string(), runtime.clone(), txn_sender, stop_listener.clone());
-
-    let async_runtime = Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
+    let rpc_server = rpc::RPC::new(&node.rpc_port, runtime.clone(), transaction_queues.clone(), block_queues.clone(), stop_listener.clone());
+    let api_server = api::API::new(&node.api_port, runtime.clone(), txn_sender, stop_listener.clone());
 
     let async_thread = {
         std::thread::spawn(move || {
@@ -89,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .expect("failed to install CTRL+C signal handler");
                         println!("received Ctrl+C!");
                         stop_trigger.trigger();
-                        runtime.stop();
+                        runtime.stop().await;
                     }),
                 );
             });

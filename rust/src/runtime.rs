@@ -1,7 +1,7 @@
 use std::{thread::{self, JoinHandle}, time, sync::{Arc, atomic::{AtomicBool, Ordering}, Mutex}, future::Future};
 
 use indexmap::map::IndexMap;
-use tokio::sync::mpsc::Receiver;
+use tokio::{runtime::Runtime as AsyncRuntime, sync::mpsc::Receiver};
 use triggered::Listener;
 
 use crate::{
@@ -18,18 +18,12 @@ const DIFFICULTY: u32 = 16;
 
 pub struct Runtime {
     stop: Listener,
-    // stop: Arc<AtomicBool>,
     account: Mutex<Account>,
     transaction_queues: rpc::TransactionQueues,
     block_queues: rpc::BlockQueues,
     blockchain: Mutex<Blockchain>,
     transaction_pool: Mutex<IndexMap<String, Arc<SignedTransaction>>>,
-    //         self._transaction_pool = OrderedDict()
-    //         self._transaction_pool_lock = threading.Lock()
     interrupt_mining_event: Arc<AtomicBool>,
-    mine_thread: Option<JoinHandle<()>>,
-    receive_new_transactions_thread: Option<JoinHandle<()>>,
-
     //         self._peer_threads = {}
 }
 
@@ -48,8 +42,6 @@ impl Runtime {
             blockchain: Mutex::new(Blockchain::new()),
             transaction_pool: Mutex::new(IndexMap::new()),
             interrupt_mining_event: Arc::new(AtomicBool::new(false)),
-            mine_thread: None,
-            receive_new_transactions_thread: None,
         }
     }
 
@@ -72,14 +64,14 @@ impl Runtime {
         }
     }
 
-    pub fn run(self: Arc<Self>, mut txn_receiver: Receiver<SignedTransaction>) -> (impl Future<Output = ()>, JoinHandle<()>) {
+    pub fn run(self: Arc<Self>, async_runtime: Arc<AsyncRuntime>, mut txn_receiver: Receiver<SignedTransaction>) -> (impl Future<Output = ()>, JoinHandle<()>) {
         let task = {
             let this = self.clone();
             let stop = self.stop.clone();
             async move {
                 while !stop.is_triggered() {
                     if let Some(txn) = txn_receiver.recv().await {
-                        this.add_transaction(txn);
+                        this.add_transaction(txn).await;
                     }
                 }
             }
@@ -88,7 +80,7 @@ impl Runtime {
             let stop = self.stop.clone();
             std::thread::spawn(move || {
                 while !stop.is_triggered() {
-                    self.mine();
+                    self.mine(async_runtime.clone());
                     thread::sleep(time::Duration::from_millis(100));
                 }
             })
@@ -96,9 +88,9 @@ impl Runtime {
         (task, thread_handle)
     }
 
-    pub fn stop(&self) {
-        self.transaction_queues.lock().unwrap().clear();
-        self.block_queues.lock().unwrap().clear();
+    pub async fn stop(&self) {
+        self.transaction_queues.lock().await.clear();
+        self.block_queues.lock().await.clear();
         self.interrupt_mining_event.store(true, Ordering::Relaxed);
     }
 //     def stop(self):
@@ -136,13 +128,16 @@ impl Runtime {
         self.blockchain.lock().unwrap().append_block(signed_block);
     }
 
-    pub fn add_transaction(&self, txn: SignedTransaction) {
-        self.transaction_queues.lock().unwrap().retain(|tx| {
-            match tx.blocking_send(Ok(txn.pb())) {
-                Ok(_) => true,
-                Err(_) => false,
+    pub async fn add_transaction(&self, txn: SignedTransaction) {
+        let mut remaining = Vec::new();
+        let mut transaction_queues = self.transaction_queues.lock().await;
+        for tx in transaction_queues.drain(..) {
+            println!("{}", tx.is_closed());
+            if let Ok(_) = tx.send(Ok(txn.pb())).await {
+                remaining.push(tx);
             }
-        });
+        }
+        transaction_queues.extend(remaining);
         self.add_to_transaction_pool(txn)
     }
 
@@ -165,7 +160,7 @@ impl Runtime {
         }
     }
 
-    pub fn mine(&self) {
+    pub fn mine(&self, async_runtime: Arc<AsyncRuntime>) {
         self.interrupt_mining_event.store(false, Ordering::Relaxed);
         let mut next_block = self.form_next_block();
         let solution = next_block.find_solution(self.interrupt_mining_event.clone());
@@ -173,12 +168,22 @@ impl Runtime {
             println!("BLOCK FOUND {}", next_block.number());
             let mut signed_block = self.account.lock().unwrap().sign_block(next_block);
             signed_block.set_solution(solution);
-            self.block_queues.lock().unwrap().retain(|tx| {
-                match tx.blocking_send(Ok(signed_block.pb())) {
-                    Ok(_) => true,
-                    Err(_) => false,
-                }
-            });
+
+            {
+                let block_queues = self.block_queues.clone();
+                let signed_block = signed_block.pb();
+                async_runtime.spawn(async move {
+                    let mut remaining = Vec::new();
+                    let mut block_queues = block_queues.lock().await;
+                    for tx in block_queues.drain(..) {
+                        println!("{}", tx.is_closed());
+                        if let Ok(_) = tx.send(Ok(signed_block.clone())).await {
+                            remaining.push(tx);
+                        }
+                    }
+                    block_queues.extend(remaining);
+                });
+            }
             self.append_block(signed_block);
         }
     }

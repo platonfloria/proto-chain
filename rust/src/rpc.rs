@@ -1,7 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use tonic::{transport::Server, Request, Response, Status};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::ReceiverStream;
 use triggered::Listener;
 
@@ -29,7 +29,7 @@ pub struct RPC {
 
 impl RPC {
     pub fn new(
-        port: &str,
+        port: &u32,
         runtime: Arc<Runtime>,
         transaction_queues: TransactionQueues,
         block_queues: BlockQueues,
@@ -69,7 +69,7 @@ impl rpc_server::Rpc for RPC {
         _: Request<TransactionFeedRequest>,
     ) -> Result<Response<Self::TransactionFeedStream>, Status> {
         let (tx, rx) = mpsc::channel(1);
-        self.transaction_queues.lock().unwrap().push(tx);
+        self.transaction_queues.lock().await.push(tx);
 
         Ok(Response::new(ReceiverStream::new(rx)))
     }
@@ -79,8 +79,8 @@ impl rpc_server::Rpc for RPC {
         _: Request<BlockFeedRequest>,
     ) -> Result<Response<Self::BlockFeedStream>, Status> {
         let (tx, rx) = mpsc::channel(1);
-        self.block_queues.lock().unwrap().push(tx);
-        println!("PUSHED {:?}", self.block_queues.lock().unwrap().len());
+        self.block_queues.lock().await.push(tx);
+        println!("PUSHED {:?}", self.block_queues.lock().await.len());
 
         Ok(Response::new(ReceiverStream::new(rx)))
     }

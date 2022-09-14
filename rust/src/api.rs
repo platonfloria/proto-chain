@@ -20,7 +20,7 @@ pub struct API {
 
 impl API {
     pub fn new(
-        port: &str,
+        port: &u32,
         runtime: Arc<Runtime>,
         txn_sender: Sender<SignedTransaction>,
         stop: Listener,
@@ -91,7 +91,7 @@ async fn get_transaciton(Path(transaction_hash): Path<String>, runtime: Arc<Runt
 }
 
 async fn post_transaciton(Json(payload): Json<SignedTransaction>, txn_sender: Sender<SignedTransaction>) -> (StatusCode, Json<String>) {
-    let hash = payload.hash().clone();
+    let hash = payload.hash();
     txn_sender.send(payload).await;
     (StatusCode::ACCEPTED, Json(hash))
 }

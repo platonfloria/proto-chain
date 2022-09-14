@@ -105,7 +105,7 @@ impl Block {
         let amount = signed_transaction.transaction().amount() as i32;
         match self.deltas.get_mut(origin) {
             Some(delta) => *delta -= amount,
-            None => {self.deltas.insert(origin.clone(), -amount);}
+            None => {self.deltas.insert(origin.to_owned(), -amount);}
         }
         match self.deltas.get_mut(destination) {
             Some(delta) => *delta += amount,
@@ -117,10 +117,7 @@ impl Block {
     fn pb(&self) -> rpc::Block {
         rpc::Block {
             number: self.number,
-            previous_block_hash: match self.previous_block_hash.clone() {
-                Some(previous_block_hash) => previous_block_hash,
-                None => String::new(),
-            },
+            previous_block_hash: self.previous_block_hash.as_ref().unwrap_or(&String::new()).to_owned(),
             transactions: self.transactions.iter().map(|t| t.pb()).collect(),
             difficulty: self.difficulty,
             reward: Some(self.reward.pb())
@@ -188,7 +185,7 @@ impl SignedBlock {
         rpc::SignedBlock {
             block: Some(self.block.pb()),
             solution: self.solution.unwrap_or(0),
-            signature: self.signature.clone()
+            signature: self.signature.to_owned()
         }
     }
 }
