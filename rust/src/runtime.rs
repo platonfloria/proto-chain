@@ -8,7 +8,7 @@ use crate::{
     block::{Block, SignedBlock},
     blockchain::Blockchain,
     transaction::{Transaction, SignedTransaction},
-    rpc::{self, PB},
+    rpc,
     Account
 };
 
@@ -128,10 +128,8 @@ impl Runtime {
             String::new()
         );
         let signed_reward = account.sign_transaction(reward);
-        let mut block = Block::new(0, None, DIFFICULTY, signed_reward);
-        let solution = block.find_solution(self.interrupt_mining_event.clone());
-        let mut signed_block = account.sign_block(block);
-        signed_block.set_solution(solution);
+        let block = Block::new(0, None, DIFFICULTY, signed_reward);
+        let signed_block = account.sign_block(block);
         signed_block
     }
 
@@ -244,7 +242,7 @@ impl Runtime {
         let last_block = blockchain.get_last_block().unwrap();
         let mut next_block = Block::new(
             last_block.block().number() + 1,
-            Some((*last_block).hash()),
+            Some(last_block.hash()),
             DIFFICULTY,
             signed_reward
         );
@@ -285,7 +283,7 @@ impl Runtime {
 //                     self._transaction_pool.pop(transaction.hash)
 //         return next_block
 
-    fn add_peer(&self, peer: &str) {
+    pub fn add_peer(&self, peer: &str) {
 
     }
 //     def add_peer(self, peer):

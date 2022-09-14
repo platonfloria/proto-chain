@@ -1,10 +1,10 @@
 use hex;
 use k256::{
-    ecdsa::{VerifyingKey, signature::Verifier, Signature, signature::Signature as _}
+    ecdsa::{VerifyingKey, signature::Verifier, Signature, signature::Signature as _}, sha2::{Sha256, Digest}
 };
 use serde::{Serialize, Deserialize};
 
-use crate::rpc::{self, PB};
+use crate::rpc;
 
 
 #[derive(Serialize, Deserialize)]
@@ -32,7 +32,7 @@ impl Transaction {
     }
 
     pub fn destination(&self) -> &str {
-        self.destination.as_ref()
+        &self.destination
     }
 
     pub fn amount(&self) -> u32 {
@@ -42,9 +42,21 @@ impl Transaction {
     pub fn set_nonce(&mut self, nonce: u32) {
         self.nonce = Some(nonce);
     }
-}
 
-impl PB<rpc::Transaction> for Transaction {
+    pub fn hash(&self) -> String {
+        let mut hasher = Sha256::new();
+        if let Some(origin) = &self.origin {
+            hasher.update(origin.as_bytes());
+        }
+        hasher.update(self.destination.as_bytes());
+        hasher.update(self.amount.to_be_bytes());
+        hasher.update(self.data.as_bytes());
+        if let Some(nonce) = self.nonce {
+            hasher.update(nonce.to_be_bytes());
+        }
+        hex::encode(hasher.finalize())
+    }
+
     fn pb(&self) -> rpc::Transaction {
         rpc::Transaction {
             origin: match self.origin.clone() {
@@ -127,22 +139,7 @@ impl SignedTransaction {
         &self.transaction
     }
 
-
-
-    // pub fn is_valid(&self) -> bool {
-    //     let destination = self.block.reward().transaction().destination();
-    //     let bytes = &hex::decode(destination).unwrap();
-    //     let vk = VerifyingKey::from_sec1_bytes(&bytes).unwrap();
-    //     let signature: Signature = Signature::from_bytes(&hex::decode(&self.signature).unwrap()).unwrap();
-    //     match vk.verify(&hex::decode(self.block.hash()).unwrap(), &signature) {
-    //         Ok(_) => true,
-    //         Err(_) => false
-    //     }
-    // }
-
     pub fn is_valid(&self) -> bool
-    where
-        Self: rpc::PB<rpc::SignedTransaction>
     {
         match &self.transaction.origin {
             Some(origin) => {
@@ -151,7 +148,7 @@ impl SignedTransaction {
                 let signature: Signature = Signature::from_bytes(&hex::decode(&self.signature).unwrap()).unwrap();
                 match vk.verify(&hex::decode(self.transaction.hash()).unwrap(), &signature) {
                     Ok(_) => true,
-                    Err(a) => false
+                    Err(_) => false
                 }
             },
             None => false
@@ -162,10 +159,14 @@ impl SignedTransaction {
 //         vk = VerifyingKey.from_string(bytes.fromhex(self._transaction.origin), NIST256p)
 //         return vk.verify(bytes.fromhex(self._signature), bytes.fromhex(self._transaction.hash))
 
-}
+    pub fn hash(&self) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(self.transaction.hash());
+        hasher.update(self.signature.as_bytes());
+        hex::encode(hasher.finalize())
+    }
 
-impl PB<rpc::SignedTransaction> for SignedTransaction {
-    fn pb(&self) -> rpc::SignedTransaction {
+    pub fn pb(&self) -> rpc::SignedTransaction {
         rpc::SignedTransaction {
             transaction: Some(self.transaction.pb()),
             signature: self.signature.clone(),

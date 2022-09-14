@@ -31,7 +31,7 @@ class SignedTransaction(BaseModel):
 
 @api.get("/block_count")
 def get_block_count():
-    return api.runtime.blockchain.last_block.number
+    return api.runtime.blockchain.last_block.block.number
 
 
 @api.get("/block/{block_number}")

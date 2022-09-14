@@ -68,10 +68,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (runtime_task, runtime_thread) = Runtime::run(
         runtime.clone(),
         txn_receiver,
-        // stop_listener.clone()
     );
 
-    let rpc_server = rpc::RPC::new(&node.rpc_port.to_string(), transaction_queues.clone(), block_queues.clone(), stop_listener.clone());
+    let rpc_server = rpc::RPC::new(&node.rpc_port.to_string(), runtime.clone(), transaction_queues.clone(), block_queues.clone(), stop_listener.clone());
     let api_server = api::API::new(&node.api_port.to_string(), runtime.clone(), txn_sender, stop_listener.clone());
 
     let async_runtime = Builder::new_current_thread()
@@ -79,27 +78,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .unwrap();
 
-
-    // let runtime = Arc::new(Mutex::new(runtime));
     let async_thread = {
-        // let runtime = runtime.clone();
-        // let stop_listener = stop_listener.clone();
         std::thread::spawn(move || {
             async_runtime.block_on(async move {
                 tokio::join!(
                     rpc_server.start(),
                     api_server.start(),
                     runtime_task,
-                    // {
-                    //     let stop_trigger = stop_trigger.clone();
-                    //     tokio::task::spawn(async move {
-                    //         while !stop_trigger.is_triggered() {
-                    //             if let Some(txn) = txn_receiver.recv().await {
-                    //                 runtime.lock().unwrap().add_transaction(txn);
-                    //             }
-                    //         }
-                    //     })
-                    // },
                     tokio::task::spawn(async move {
                         tokio::signal::ctrl_c()
                             .await

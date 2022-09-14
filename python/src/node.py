@@ -104,16 +104,14 @@ class Runtime:
         reward = Transaction(None, self._account.address, 100, "")
         signed_reward = self._account.sign_transaction(reward)
         block = Block(0, None, DIFFICULTY, signed_reward)
-        solution = block.find_solution(None)
         signed_block = self._account.sign_block(block)
-        signed_block.set_solution(solution)
         return signed_block
 
     def _form_next_block(self):
         reward = Transaction(None, self._account.address, 100, "")
         signed_reward = self._account.sign_transaction(reward)
         next_block = Block(
-            self._blockchain.last_block.number + 1,
+            self._blockchain.last_block.block.number + 1,
             self._blockchain.last_block.hash,
             DIFFICULTY,
             signed_reward

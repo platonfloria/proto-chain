@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-use k256::sha2::{Sha256, Digest};
 use tonic::{transport::Server, Request, Response, Status};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -12,29 +11,17 @@ mod rpc_pb2 {
 }
 pub use rpc_pb2::*;
 
+use crate::runtime::Runtime;
+
 type TransactionChannel = mpsc::Sender<Result<SignedTransaction, Status>>;
 pub type TransactionQueues = Arc<Mutex<Vec<TransactionChannel>>>;
 type BlockChannel = mpsc::Sender<Result<SignedBlock, Status>>;
 pub type BlockQueues = Arc<Mutex<Vec<BlockChannel>>>;
 
 
-pub trait PB<M: prost::Message> {
-    fn hash(&self) -> String
-    where
-        Self: Sized
-    {
-        let mut hasher = Sha256::new();
-        let buf = self.pb().encode_to_vec();
-        hasher.update(&buf);
-        hex::encode(hasher.finalize())
-    }
-
-    fn pb(&self) -> M;
-}
-
-#[derive(Debug)]
 pub struct RPC {
     port: String,
+    runtime: Arc<Runtime>,
     transaction_queues: TransactionQueues,
     block_queues: BlockQueues,
     stop: Option<Listener>,
@@ -43,12 +30,14 @@ pub struct RPC {
 impl RPC {
     pub fn new(
         port: &str,
+        runtime: Arc<Runtime>,
         transaction_queues: TransactionQueues,
         block_queues: BlockQueues,
         stop: Listener,
     ) -> RPC {
         Self {
             port: port.to_string(),
+            runtime,
             transaction_queues,
             block_queues,
             stop: Some(stop),
@@ -77,7 +66,7 @@ impl rpc_server::Rpc for RPC {
 
     async fn transaction_feed(
         &self,
-        request: Request<TransactionFeedRequest>,
+        _: Request<TransactionFeedRequest>,
     ) -> Result<Response<Self::TransactionFeedStream>, Status> {
         let (tx, rx) = mpsc::channel(1);
         self.transaction_queues.lock().unwrap().push(tx);
@@ -87,7 +76,7 @@ impl rpc_server::Rpc for RPC {
 
     async fn block_feed(
         &self,
-        request: Request<BlockFeedRequest>,
+        _: Request<BlockFeedRequest>,
     ) -> Result<Response<Self::BlockFeedStream>, Status> {
         let (tx, rx) = mpsc::channel(1);
         self.block_queues.lock().unwrap().push(tx);
@@ -100,10 +89,10 @@ impl rpc_server::Rpc for RPC {
         &self,
         request: Request<SyncRequest>,
     ) -> Result<Response<BlockChain>, Status> {
+        self.runtime.add_peer(&request.into_inner().address);        
         let reply = BlockChain {
-            blocks: vec![],
+            blocks: self.runtime.blockchain().lock().unwrap().blocks().iter().map(|b| b.pb()).collect(),
         };
-
         Ok(Response::new(reply))
     }
 }

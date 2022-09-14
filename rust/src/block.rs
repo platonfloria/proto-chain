@@ -5,11 +5,10 @@ use k256::{
     sha2::{Sha256, Digest},
     ecdsa::{VerifyingKey, signature::Verifier, Signature, signature::Signature as _}
 };
-use prost::Message;
 
 use crate::{
     transaction::SignedTransaction,
-    rpc::{self, PB}
+    rpc
 };
 
 
@@ -60,15 +59,11 @@ impl Block {
     }
 
     pub fn find_solution(&mut self, interrupt_event: Arc<AtomicBool>) -> u32 {
-        if let None = self.previous_block_hash {
-            0
-        } else {
-            let mut candidate = 0;
-            while !self.check_solution(candidate) && !interrupt_event.load(Ordering::Relaxed) {
-                candidate += 1;
-            }
-            candidate
+        let mut candidate = 0;
+        while !self.check_solution(candidate) && !interrupt_event.load(Ordering::Relaxed) {
+            candidate += 1;
         }
+        candidate
     }
 // def find_solution(self, interrupt_event):
 //     if self._previous_block_hash is None:
@@ -124,9 +119,23 @@ impl Block {
         }
         self.transactions.push(signed_transaction);
     }
-}
 
-impl PB<rpc::Block> for Block {
+    pub fn hash(&self) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(self.number.to_be_bytes());
+        if let Some(previous_block_hash) = &self.previous_block_hash {
+            hasher.update(previous_block_hash.as_bytes());
+        }
+        for txn in &self.transactions {
+            hasher.update(txn.hash());
+        }
+        hasher.update(self.difficulty.to_be_bytes());
+        hasher.update(self.reward.hash());
+        hex::encode(hasher.finalize())
+    }
+// }
+
+// impl PB<rpc::Block> for Block {
     fn pb(&self) -> rpc::Block {
         rpc::Block {
             number: self.number,
@@ -272,19 +281,28 @@ impl SignedBlock {
         let bytes = &hex::decode(destination).unwrap();
         let vk = VerifyingKey::from_sec1_bytes(&bytes).unwrap();
         let signature: Signature = Signature::from_bytes(&hex::decode(&self.signature).unwrap()).unwrap();
-        match vk.verify(&hex::decode(self.block.hash()).unwrap(), &signature) {
-            Ok(_) => self.block.check_solution(self.solution.unwrap()),
-            Err(_) => false
+        match (vk.verify(&hex::decode(self.block.hash()).unwrap(), &signature), self.solution) {
+            (Ok(_), Some(solution)) => self.block.check_solution(solution),
+            (Ok(_), None) => true,
+            (Err(_), _) => false
         }
     }
 //     @property
 //     def is_valid(self):
 //         vk = VerifyingKey.from_string(bytes.fromhex(self._block.reward.transaction.destination), NIST256p)
 //         return vk.verify(bytes.fromhex(self._signature), bytes.fromhex(self._block.hash)) and self._block.is_valid
-}
 
-impl PB<rpc::SignedBlock> for SignedBlock {
-    fn pb(&self) -> rpc::SignedBlock {
+    pub fn hash(&self) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(self.block.hash());
+        if let Some(solution) = self.solution {
+            hasher.update(solution.to_be_bytes());
+        }
+        hasher.update(self.signature.as_bytes());
+        hex::encode(hasher.finalize())
+    }
+
+    pub fn pb(&self) -> rpc::SignedBlock {
         rpc::SignedBlock {
             block: Some(self.block.pb()),
             solution: self.solution.unwrap_or(0),

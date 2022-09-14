@@ -7,7 +7,7 @@ class BlockChain:
     def append_block(self, signed_block):
         assert signed_block.is_valid
         if self._blocks != []:
-            assert signed_block.block.previous_block_hash == self._blocks[-1].block.hash
+            assert signed_block.block.previous_block_hash == self._blocks[-1].hash
         self._blocks.append(signed_block)
         for address, delta in signed_block.block.deltas.items():
             self._balances[address] = self._balances.get(address, 0) + delta
@@ -27,7 +27,7 @@ class BlockChain:
 
     @property
     def last_block(self):
-        return self._blocks[-1].block
+        return self._blocks[-1]
 
     def is_transaction_valid(self, signed_transaction, next_block):
         if signed_transaction.is_valid:

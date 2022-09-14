@@ -48,7 +48,13 @@ class Block:
     @cached_property
     def hash(self):
         m = sha256()
-        m.update(self.pb.SerializeToString())
+        m.update(self._number.to_bytes(length=4, byteorder='big'))
+        if self._previous_block_hash is not None:
+            m.update(self._previous_block_hash.encode())
+        for txn in self._transactions:
+            m.update(txn.hash.encode())
+        m.update(self._difficulty.to_bytes(length=4, byteorder='big'))
+        m.update(self._reward.hash.encode())
         return m.hexdigest()
 
     @property
@@ -119,6 +125,15 @@ class SignedBlock:
     @property
     def block(self):
         return self._block
+
+    @cached_property
+    def hash(self):
+        m = sha256()
+        m.update(self._block.hash.encode())
+        if self._solution:
+            m.update(self._solution.to_bytes(length=4, byteorder='big'))
+        m.update(self._signature.encode())
+        return m.hexdigest()
 
     def set_solution(self, solution):
         self._solution = solution

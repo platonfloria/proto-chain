@@ -1,17 +1,15 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use axum::{
     routing::{get, post},
     http::StatusCode,
-    response::{IntoResponse},
     Json, Router, extract::Path,
 };
 // use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 use tokio::sync::mpsc::Sender;
 use triggered::Listener;
 
-use crate::{transaction::SignedTransaction, rpc::PB, runtime::Runtime};
+use crate::{transaction::SignedTransaction, runtime::Runtime};
 
 
 pub struct API {

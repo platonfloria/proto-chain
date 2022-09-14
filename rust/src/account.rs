@@ -4,7 +4,6 @@ use k256::{ecdsa::{self, signature::Signer}};
 use crate::{
     transaction::{Transaction, SignedTransaction},
     block::{Block, SignedBlock},
-    rpc::PB
 };
 
 

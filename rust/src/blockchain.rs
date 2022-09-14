@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     block::{Block, SignedBlock},
-    transaction::SignedTransaction, rpc::PB,
+    transaction::SignedTransaction,
 };
 
 
@@ -19,6 +19,10 @@ impl Blockchain {
             balances: HashMap::new(),
             transaction_lookup: HashMap::new(),
         }
+    }
+
+    pub fn blocks(&self) -> &[SignedBlock] {
+        &self.blocks
     }
 
     pub fn get_block(&self, block_number: usize) -> Option<&SignedBlock> {
@@ -43,9 +47,9 @@ impl Blockchain {
         ).or_insert(0) += signed_block.block().reward().transaction().amount();
         for (address, delta) in signed_block.block().deltas() {
             if *delta >= 0 {
-                *self.balances.entry(address.clone()).or_insert(0) += *delta as u32;
+                *self.balances.entry(address.to_owned()).or_insert(0) += *delta as u32;
             } else {
-                *self.balances.entry(address.clone()).or_insert(0) -= delta.abs() as u32;
+                *self.balances.entry(address.to_owned()).or_insert(0) -= delta.abs() as u32;
             }
         }
         self.transaction_lookup.insert(signed_block.block().reward().hash(), signed_block.block().reward().clone());

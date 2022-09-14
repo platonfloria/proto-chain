@@ -20,7 +20,13 @@ class Transaction:
     @property
     def hash(self):
         m = sha256()
-        m.update(self.pb.SerializeToString())
+        if self._origin is not None:
+            m.update(self._origin.encode())
+        m.update(self._destination.encode())
+        m.update(self._amount.to_bytes(length=4, byteorder='big'))
+        m.update(self._data.encode())
+        if self._nonce is not None:
+            m.update(self._nonce.to_bytes(length=4, byteorder='big'))
         return m.hexdigest()
 
     @property
@@ -72,7 +78,8 @@ class SignedTransaction:
     @property
     def hash(self):
         m = sha256()
-        m.update(self.pb.SerializeToString())
+        m.update(self._transaction.hash.encode())
+        m.update(self._signature.encode())
         return m.hexdigest()
 
     @property
