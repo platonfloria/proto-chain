@@ -1,0 +1,9 @@
+nodes:
+  - ipaddress: 0.0.0.0
+    api_port: 8000
+    rpc_port: 50051
+    account: b129bdb55ff1dba59fbeb30a6aa774622bab3eedb1c71333262598af439006cd
+  - ipaddress: 0.0.0.0
+    api_port: 8001
+    rpc_port: 50052
+    account: 447755f4a124f405e4908626346e97578ada078835eb49a6351073bba00dc6b4

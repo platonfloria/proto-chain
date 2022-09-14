@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package rpc;
+
+
+message Transaction {
+    string origin                           = 1;
+    string destination                      = 2;
+    uint32 amount                           = 3;
+    string data                             = 4;
+    uint32 nonce                             = 5;
+}
+
+message SignedTransaction {
+    Transaction transaction                 = 1;
+    string signature                        = 2;
+}
+
+message Block {
+    uint32 number                            = 1;
+    string previous_block_hash              = 2;
+    repeated SignedTransaction transactions = 3;
+    uint32 difficulty                        = 4;
+    uint32 solution                          = 5;
+    SignedTransaction reward                = 6;
+}
+
+message SignedBlock {
+    Block block                             = 1;
+    string signature                        = 2;
+}
+
+message BlockChain {
+    repeated SignedBlock blocks             = 1;
+}
+
+
+message TransactionFeedRequest {
+}
+
+message BlockFeedRequest {
+}
+  
+message SyncRequest {
+    string address                          = 1;
+}
+
+
+service RPC {
+    rpc TransactionFeed(TransactionFeedRequest) returns (stream SignedTransaction);
+    rpc BlockFeed(BlockFeedRequest) returns (stream SignedBlock);
+    rpc Sync(SyncRequest) returns (BlockChain);
+}
