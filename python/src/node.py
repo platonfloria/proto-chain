@@ -171,7 +171,7 @@ def main(node, peers: list=None):
     if peers is None:
         peers = []
     else:
-        peers = [f"{config['nodes'][node]['ipaddress']}:{config['nodes'][node]['rpc_port']}" for node in peers]
+        peers = [f"localhost:{config['nodes'][node]['rpc_port']}" for node in peers]
     runtime = Runtime(account, transaction_queues, block_queues)
     api.set_runtime(runtime)
     stop_event = threading.Event()
