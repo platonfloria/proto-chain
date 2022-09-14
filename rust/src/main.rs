@@ -1,8 +1,6 @@
-use core::time;
-use std::{collections::HashMap, sync::{Arc, Mutex}, thread};
+use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use clap::Parser;
-use k256::{ecdsa::{VerifyingKey, signature::Verifier, Signature, signature::Signer, signature::Signature as _, SigningKey}, Secp256k1};
 use serde::Deserialize;
 use serde_yaml;
 use tokio::{runtime::Builder, sync::mpsc};
@@ -60,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (stop_trigger, stop_listener) = triggered::trigger();
 
-    let (txn_sender, mut txn_receiver) = mpsc::channel(1);
+    let (txn_sender, txn_receiver) = mpsc::channel(1);
     let mut runtime = Runtime::new(account, transaction_queues.clone(), block_queues.clone(), stop_listener.clone());
     runtime.sync(format!("{}:{}", node.ipaddress, node.rpc_port), peers);
 
@@ -97,13 +95,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             });
         })
     };
-
-    // let runtime_thread = std::thread::spawn(move || {
-    //     while !stop_listener.is_triggered() {
-    //         runtime.lock().unwrap().mine();
-    //         thread::sleep(time::Duration::from_millis(100));
-    //     }
-    // });
 
     println!("Hello, world!");
     async_thread.join();

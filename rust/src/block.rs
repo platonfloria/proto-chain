@@ -58,6 +58,20 @@ impl Block {
         &self.deltas
     }
 
+    pub fn hash(&self) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(self.number.to_be_bytes());
+        if let Some(previous_block_hash) = &self.previous_block_hash {
+            hasher.update(previous_block_hash.as_bytes());
+        }
+        for txn in &self.transactions {
+            hasher.update(txn.hash());
+        }
+        hasher.update(self.difficulty.to_be_bytes());
+        hasher.update(self.reward.hash());
+        hex::encode(hasher.finalize())
+    }
+
     pub fn find_solution(&mut self, interrupt_event: Arc<AtomicBool>) -> u32 {
         let mut candidate = 0;
         while !self.check_solution(candidate) && !interrupt_event.load(Ordering::Relaxed) {
@@ -65,14 +79,6 @@ impl Block {
         }
         candidate
     }
-// def find_solution(self, interrupt_event):
-//     if self._previous_block_hash is None:
-//         return 0
-//     else:
-//         candidate = 0
-//         while not self.check_solution(candidate) and not interrupt_event.is_set():
-//             candidate += 1
-//         return candidate
 
     fn check_solution(&self, solution: u32) -> bool {
         if self.previous_block_hash == None && self.number == 0 {
@@ -92,18 +98,6 @@ impl Block {
             zeros > self.difficulty
         }
     }
-// def check_solution(self, solution):
-//     if self._previous_block_hash is None and self._number == 0:
-//         return True
-//     else:
-//         base = sha256()
-//         base.update(bytes.fromhex(self.hash))
-//         m = base.copy()
-//         m.update(bytes(solution))
-//         digest = m.digest()
-//         if 256 - int.from_bytes(digest, 'big').bit_length() > self._difficulty:
-//             return True
-//         return False
 
     pub fn append_transaction(&mut self, signed_transaction: Arc<SignedTransaction>) {
         let origin = signed_transaction.transaction().origin().unwrap();
@@ -120,22 +114,6 @@ impl Block {
         self.transactions.push(signed_transaction);
     }
 
-    pub fn hash(&self) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(self.number.to_be_bytes());
-        if let Some(previous_block_hash) = &self.previous_block_hash {
-            hasher.update(previous_block_hash.as_bytes());
-        }
-        for txn in &self.transactions {
-            hasher.update(txn.hash());
-        }
-        hasher.update(self.difficulty.to_be_bytes());
-        hasher.update(self.reward.hash());
-        hex::encode(hasher.finalize())
-    }
-// }
-
-// impl PB<rpc::Block> for Block {
     fn pb(&self) -> rpc::Block {
         rpc::Block {
             number: self.number,
@@ -149,52 +127,6 @@ impl Block {
         }
     }
 }
-
-//     def append_transaction(self, signed_transactions):
-//         origin = signed_transactions.transaction.origin
-//         destination = signed_transactions.transaction.destination
-//         amount = signed_transactions.transaction.amount
-//         self._deltas[origin] = self._deltas.get(origin, 0) - amount
-//         self._deltas[destination] = self._deltas.get(destination, 0) + amount
-//         self._transactions.append(signed_transactions)
-
-//     @property
-//     def dict(self):
-//         return {
-//             "number": self._number,
-//             "previous_block_hash": self._previous_block_hash,
-//             "transactions": [t.dict for t in self._transactions],
-//             "difficulty": self._difficulty,
-//             "solution": self._solution,
-//             "reward": self._reward.dict
-//         }
-
-//     @property
-//     def number(self):
-//         return self._number
-
-//     @property
-//     def previous_block_hash(self):
-//         return self._previous_block_hash
-
-//     @property
-//     def reward(self):
-//         return self._reward
-
-//     @property
-//     def transactions(self):
-//         return self._transactions
-
-//     @property
-//     def hash(self):
-//         m = sha256()
-//         m.update(self.pb.SerializeToString())
-//         return m.hexdigest()
-
-//     @property
-//     def deltas(self):
-//         return self._deltas
-
 //     @classmethod
 //     def from_pb(cls, pb):
 //         inst = cls(
@@ -206,52 +138,6 @@ impl Block {
 //         for transaction in pb.transactions:
 //             inst.append_transaction(SignedTransaction.from_pb(transaction))
 //         return inst
-
-//     def find_solution(self, interrupt_event):
-//         if self._previous_block_hash is None:
-//             self._solution = 0
-//             return
-//         else:
-//             candidate = 0
-//             while not self._check_solution(candidate) and not interrupt_event.is_set():
-//                 candidate += 1
-
-//     @property
-//     def is_valid(self):
-//         deltas = {}
-//         deltas[self._reward.transaction.destination] = self._reward.transaction.amount
-//         for signed_transactions in self._transactions:
-//             origin = signed_transactions.transaction.origin
-//             destination = signed_transactions.transaction.destination
-//             amount = signed_transactions.transaction.amount
-//             deltas[origin] = deltas.get(origin, 0) - amount
-//             deltas[destination] = deltas.get(destination, 0) + amount
-//         if deltas != self._deltas:
-//             return False
-//         if self._previous_block_hash is None and self._number == 0:
-//             return True
-//         return self._check_solution(self._solution)
-
-//     @cached_property
-//     def _partial_hash(self):
-//         m = sha256()
-//         m.update(bytes(self._number))
-//         m.update(bytes.fromhex(self._previous_block_hash))
-//         for t in self._transactions:
-//             m.update(t.pb.SerializeToString())
-//         m.update(self._reward.pb.SerializeToString())
-//         return m
-
-//     def _check_solution(self, candidate):
-//         m = self._partial_hash.copy()
-//         m.update(bytes(candidate))
-//         digest = m.digest()
-//         if 256 - int.from_bytes(digest, 'big').bit_length() > self._difficulty:
-//             self._solution = candidate
-//             return True
-//         return False
-
-
 
 pub struct SignedBlock {
     block: Block,
@@ -276,6 +162,16 @@ impl SignedBlock {
         self.solution = Some(solution);
     }
 
+    pub fn hash(&self) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(self.block.hash());
+        if let Some(solution) = self.solution {
+            hasher.update(solution.to_be_bytes());
+        }
+        hasher.update(self.signature.as_bytes());
+        hex::encode(hasher.finalize())
+    }
+
     pub fn is_valid(&self) -> bool {
         let destination = self.block.reward().transaction().destination();
         let bytes = &hex::decode(destination).unwrap();
@@ -287,20 +183,6 @@ impl SignedBlock {
             (Err(_), _) => false
         }
     }
-//     @property
-//     def is_valid(self):
-//         vk = VerifyingKey.from_string(bytes.fromhex(self._block.reward.transaction.destination), NIST256p)
-//         return vk.verify(bytes.fromhex(self._signature), bytes.fromhex(self._block.hash)) and self._block.is_valid
-
-    pub fn hash(&self) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(self.block.hash());
-        if let Some(solution) = self.solution {
-            hasher.update(solution.to_be_bytes());
-        }
-        hasher.update(self.signature.as_bytes());
-        hex::encode(hasher.finalize())
-    }
 
     pub fn pb(&self) -> rpc::SignedBlock {
         rpc::SignedBlock {
@@ -310,29 +192,6 @@ impl SignedBlock {
         }
     }
 }
-
-
-// class SignedBlock:
-//     def __init__(self, block, signature):
-//         self._block = block
-//         self._signature = signature
-
-//     @property
-//     def block(self):
-//         return self._block
-
-//     @property
-//     def is_valid(self):
-//         vk = VerifyingKey.from_string(bytes.fromhex(self._block.reward.transaction.destination), NIST256p)
-//         return vk.verify(bytes.fromhex(self._signature), bytes.fromhex(self._block.hash)) and self._block.is_valid
-
-//     @property
-//     def pb(self):
-//         return rpc_pb2.SignedBlock(
-//             block=self._block.pb,
-//             signature=self._signature
-//         )
-
 //     @classmethod
 //     def from_pb(cls, pb):
 //         return cls(

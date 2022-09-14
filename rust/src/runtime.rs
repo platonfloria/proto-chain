@@ -71,20 +71,11 @@ impl Runtime {
             self.add_peer(peer)
         }
     }
-//     def sync(self, address, peers):
-//         if peers == []:
-//             signed_blocks = [self._create_genesis_block()]
-//         else:
-//             signed_blocks = self._get_blocks_from_peers(peers, address)
-//         for signed_block in signed_blocks:
-//             self._append_block(signed_block)
-//         for peer in peers:
-//             self.add_peer(peer)
 
-    pub fn run(this: Arc<Self>, mut txn_receiver: Receiver<SignedTransaction>) -> (impl Future<Output = ()>, JoinHandle<()>) {
+    pub fn run(self: Arc<Self>, mut txn_receiver: Receiver<SignedTransaction>) -> (impl Future<Output = ()>, JoinHandle<()>) {
         let task = {
-            let this = this.clone();
-            let stop = this.stop.clone();
+            let this = self.clone();
+            let stop = self.stop.clone();
             async move {
                 while !stop.is_triggered() {
                     if let Some(txn) = txn_receiver.recv().await {
@@ -94,10 +85,10 @@ impl Runtime {
             }
         };
         let thread_handle = {
-            let stop = this.stop.clone();
+            let stop = self.stop.clone();
             std::thread::spawn(move || {
                 while !stop.is_triggered() {
-                    this.mine();
+                    self.mine();
                     thread::sleep(time::Duration::from_millis(100));
                 }
             })
@@ -144,14 +135,6 @@ impl Runtime {
         }
         self.blockchain.lock().unwrap().append_block(signed_block);
     }
-//     def _append_block(self, signed_block):
-//         self._blockchain.append_block(signed_block)
-//         from pprint import pprint
-//         print("NEW BLOCK", signed_block.block.number)
-//         pprint({address[:4]: balance for address, balance in self._blockchain._balances.items()})
-//         with self._transaction_pool_lock:
-//             for transaciton in signed_block.block.transactions:
-//                 self._transaction_pool.pop(transaciton.hash, None)
 
     pub fn add_transaction(&self, txn: SignedTransaction) {
         self.transaction_queues.lock().unwrap().retain(|tx| {
@@ -162,10 +145,6 @@ impl Runtime {
         });
         self.add_to_transaction_pool(txn)
     }
-//     def add_transaction(self, transaction):
-//         for queue in self._transaction_queues:
-//             queue.put(transaction)
-//         self._add_to_transaction_pool(transaction)
 
     fn add_to_transaction_pool(&self, txn: SignedTransaction) {
         println!("NEW TRANSACTION {}", txn.hash());
@@ -173,17 +152,10 @@ impl Runtime {
             self.transaction_pool.lock().unwrap().insert(txn.hash(), Arc::new(txn));
         }
     }
-// def _add_to_transaction_pool(self, signed_transaction):
-//     print("NEW TRANSACTION", signed_transaction.transaction)
-//     if signed_transaction.is_valid:
-//         with self._transaction_pool_lock:
-//             self._transaction_pool[signed_transaction.hash] = signed_transaction
-//         return True
-//     return False
 
     pub fn get_transaction(&self, transaction_hash: String) -> Option<Arc<SignedTransaction>> {
         match self.blockchain.lock().unwrap().get_transaciton(&transaction_hash) {
-            Some(txn) => Some(txn),
+            Some(txn) => Some(txn.clone()),
             None => {
                 match self.transaction_pool.lock().unwrap().get(&transaction_hash) {
                     Some(txn) => Some(txn.clone()),
@@ -191,14 +163,7 @@ impl Runtime {
                 }
             }
         }
-
     }
-//     def get_transaction(self, transaction_hash):
-//         transaction = self._blockchain.get_transaction(transaction_hash)
-//         if transaction is None:
-//             return self._transaction_pool.get(transaction_hash)
-//         else:
-//             return transaction
 
     pub fn mine(&self) {
         self.interrupt_mining_event.store(false, Ordering::Relaxed);
@@ -217,17 +182,6 @@ impl Runtime {
             self.append_block(signed_block);
         }
     }
-//     def mine(self):
-//         while not self._stop:
-//             self._interrupt_mining_event.clear()
-//             next_block = self._form_next_block()
-//             next_block.find_solution(self._interrupt_mining_event)
-//             if not self._interrupt_mining_event.is_set():
-//                 print("BLOCK_FOUND", next_block.number)
-//                 signed_block = SignedBlock(next_block, self._account.sign_block(next_block))
-//                 for queue in self._block_queues:
-//                     queue.put(signed_block)
-//                 self._append_block(signed_block)
 
     fn form_next_block(&self) -> Block {
         let mut account = self.account.lock().unwrap();
@@ -255,33 +209,8 @@ impl Runtime {
                 false
             }
         });
-        // for (_, tx) in transaction_pool.iter() {
-        //     if blockchain.is_transaction_valid(&tx, &next_block) {
-        //         next_block.append_transaction(tx.clone());
-        //     } else {
-        //         println!("Invalid transaction {}", tx.hash());
-        //         // transaction_pool.remove(&tx.hash());
-        //     }
-        // }
         next_block
     }
-//     def _form_next_block(self):
-//         reward = Transaction(None, self._account.address, 100, "")
-//         signed_reward = SignedTransaction(reward, self._account.sign_transaction(reward))
-//         next_block = Block(
-//             self._blockchain.last_block.number + 1,
-//             self._blockchain.last_block.hash,
-//             DIFFICULTY,
-//             signed_reward
-//         )
-//         with self._transaction_pool_lock:
-//             for transaction in list(self._transaction_pool.values()):
-//                 if self._blockchain.is_transaction_valid(transaction, next_block):
-//                     next_block.append_transaction(transaction)
-//                 else:
-//                     print("Invalid transaction", transaction.hash)
-//                     self._transaction_pool.pop(transaction.hash)
-//         return next_block
 
     pub fn add_peer(&self, peer: &str) {
 
@@ -312,23 +241,6 @@ impl Runtime {
 //         return blocks
 
 }
-
-// class Runtime:
-//     def __init__(self, account, transaction_queues, block_queues):
-//         self._stop = False
-//         self._account = account
-//         self._transaction_queues = transaction_queues
-//         self._block_queues = block_queues
-//         self._blockchain = BlockChain()
-//         self._transaction_pool = OrderedDict()
-//         self._transaction_pool_lock = threading.Lock()
-//         self._interrupt_mining_event = threading.Event()
-//         self._peer_threads = {}
-
-
-//     @property
-//     def blockchain(self):
-//         return self._blockchain
 
 //     def _listen_to_new_blocks_from_peer(self, address):
 //         with grpc.insecure_channel(address) as channel:

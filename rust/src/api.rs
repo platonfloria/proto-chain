@@ -5,7 +5,6 @@ use axum::{
     http::StatusCode,
     Json, Router, extract::Path,
 };
-// use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 use triggered::Listener;
 

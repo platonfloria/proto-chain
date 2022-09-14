@@ -71,29 +71,6 @@ impl Transaction {
     }
 }
 
-
-
-//     @property
-//     def dict(self):
-//         return {
-//             "nonce": self._nonce,
-//             "origin": self._origin,
-//             "destination": self._destination,
-//             "amount": self._amount,
-//             "data": self._data
-//         }
-
-//     @classmethod
-//     def from_dict(cls, dict):
-//         inst = cls(
-//             origin=dict["origin"],
-//             destination=dict["destination"],
-//             amount=dict["amount"],
-//             data=dict["data"],
-//         )
-//         inst.set_nonce(dict["nonce"])
-//         return inst
-
 //     @classmethod
 //     def from_pb(cls, pb):
 //         inst = cls(
@@ -104,18 +81,6 @@ impl Transaction {
 //         )
 //         inst.set_nonce(pb.nonce)
 //         return inst
-
-//     @property
-//     def origin(self):
-//         return self._origin
-
-//     @property
-//     def destination(self):
-//         return self._destination
-
-//     @property
-//     def amount(self):
-//         return self._amount
 
 //     def __repr__(self):
 //         return f"From {self._origin[:4]} to {self._destination[:4]} {self._amount}"
@@ -139,6 +104,13 @@ impl SignedTransaction {
         &self.transaction
     }
 
+    pub fn hash(&self) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(self.transaction.hash());
+        hasher.update(self.signature.as_bytes());
+        hex::encode(hasher.finalize())
+    }
+
     pub fn is_valid(&self) -> bool
     {
         match &self.transaction.origin {
@@ -154,17 +126,6 @@ impl SignedTransaction {
             None => false
         }
     }
-//     @property
-//     def is_valid(self):
-//         vk = VerifyingKey.from_string(bytes.fromhex(self._transaction.origin), NIST256p)
-//         return vk.verify(bytes.fromhex(self._signature), bytes.fromhex(self._transaction.hash))
-
-    pub fn hash(&self) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(self.transaction.hash());
-        hasher.update(self.signature.as_bytes());
-        hex::encode(hasher.finalize())
-    }
 
     pub fn pb(&self) -> rpc::SignedTransaction {
         rpc::SignedTransaction {
@@ -173,36 +134,6 @@ impl SignedTransaction {
         }
     }
 }
-
-
-// class SignedTransaction:
-//     def __init__(self, transaction, signature):
-//         self._transaction = transaction
-//         self._signature = signature
-
-//     @property
-//     def transaction(self):
-//         return self._transaction
-
-//     @property
-//     def hash(self):
-//         m = sha256()
-//         m.update(self.pb.SerializeToString())
-//         return m.hexdigest()
-
-//     @property
-//     def dict(self):
-//         return {
-//             "transaction": self._transaction.dict,
-//             "signature": self._signature
-//         }
-
-//     @classmethod
-//     def from_dict(cls, dict):
-//         return cls(
-//             transaction=Transaction.from_dict(dict["transaction"]),
-//             signature=dict["signature"]
-//         )
 
 //     @classmethod
 //     def from_pb(cls, pb):

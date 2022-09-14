@@ -36,6 +36,10 @@ impl Blockchain {
     pub fn balances(&self) -> &HashMap<String, u32> {
         &self.balances
     }
+    
+    pub fn get_transaciton(&self, transaction_hash: &str) -> Option<&Arc<SignedTransaction>> {
+        self.transaction_lookup.get(transaction_hash)
+    }
 
     pub fn append_block(&mut self, signed_block: SignedBlock) {
         assert!(signed_block.is_valid());
@@ -43,7 +47,7 @@ impl Blockchain {
             assert_eq!(*signed_block.block().previous_block_hash().as_ref().unwrap(), self.blocks.last().unwrap().hash());
         }
         *self.balances.entry(
-            signed_block.block().reward().transaction().destination().to_string()
+            signed_block.block().reward().transaction().destination().to_owned()
         ).or_insert(0) += signed_block.block().reward().transaction().amount();
         for (address, delta) in signed_block.block().deltas() {
             if *delta >= 0 {
@@ -58,37 +62,6 @@ impl Blockchain {
         }
         self.blocks.push(signed_block);
     }
-//     def append_block(self, signed_block):
-//         assert signed_block.is_valid
-//         if self._blocks != []:
-//             assert signed_block.block.previous_block_hash == self._blocks[-1].block.hash
-//         self._blocks.append(signed_block)
-//         for address, delta in signed_block.block.deltas.items():
-//             self._balances[address] = self._balances.get(address, 0) + delta
-//         self._transaction_lookup[signed_block.block.reward.hash] = signed_block.block.reward
-//         for transaction in signed_block.block.transactions:
-//             self._transaction_lookup[transaction.hash] = transaction
-
-//     def get_block(self, block_number):
-//         return self._blocks[block_number]
-    
-    pub fn get_transaciton(&self, transaction_hash: &str) -> Option<Arc<SignedTransaction>> {
-        match self.transaction_lookup.get(transaction_hash) {
-            Some(signed_transaction) => Some(signed_transaction.clone()),
-            None => None,
-        }
-        // self.transaction_lookup.get()
-    }
-//     def get_transaction(self, transaction_hash):
-//         return self._transaction_lookup.get(transaction_hash)
-
-//     @property
-//     def blocks(self):
-//         return self._blocks
-
-//     @property
-//     def last_block(self):
-//         return self._blocks[-1].block
 
     pub fn is_transaction_valid(&self, signed_transaction: &SignedTransaction, next_block: &Block) -> bool {
         match signed_transaction.transaction().origin() {
@@ -99,11 +72,4 @@ impl Blockchain {
             None => false
         }
     }
-
-//     def is_transaction_valid(self, signed_transaction, next_block):
-//         if signed_transaction.is_valid:
-//             origin = signed_transaction.transaction.origin
-//             amount = signed_transaction.transaction.amount
-//             return self._balances.get(origin, 0) + next_block.deltas.get(origin, 0) >= amount
-//         return False
 }
