@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "toycoin"
+version = "0.1.0"
+description = ""
+authors = ["Platon Floria <platon.floria@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+ecdsa = "^0.18.0"
+fire = "^0.4.0"
+fastapi = "^0.82.0"
+uvicorn = "^0.18.3"
+pydantic = "^1.10.2"
+PyYAML = "^6.0"
+requests = "^2.28.1"
+grpcio-tools = "^1.48.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
