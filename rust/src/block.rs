@@ -192,7 +192,7 @@ impl SignedBlock {
     pub fn from_pb(pb: &rpc::SignedBlock) -> Self {
         Self {
             block: Block::from_pb(pb.block.as_ref().unwrap()),
-            solution: Some(pb.solution),
+            solution: if pb.solution == 0 { None } else { Some(pb.solution) },
             signature: pb.signature.to_owned(),
         }
     }
