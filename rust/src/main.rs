@@ -43,10 +43,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let f = std::fs::File::open("../config.yaml")?;
     let config: HashMap<String, Vec<NodeConfig>>  = serde_yaml::from_reader(f)?;
-    let node_ipaddress = config["nodes"][0].ipaddress.to_owned();
-    let node_api_port = config["nodes"][0].api_port;
-    let node_rpc_port = config["nodes"][0].rpc_port;
-    let node_account = config["nodes"][0].account.to_owned();
+    let node_ipaddress = config["nodes"][args.node].ipaddress.to_owned();
+    let node_api_port = config["nodes"][args.node].api_port;
+    let node_rpc_port = config["nodes"][args.node].rpc_port;
+    let node_account = config["nodes"][args.node].account.to_owned();
     let account = Account::new(&node_account);
     let mut peers: Vec<String> = vec![];
     if !args.peers.is_empty() {
