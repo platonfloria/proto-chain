@@ -39,4 +39,4 @@ nft-contract/res/
 
 .vscode/
 
-python/src/__pycache__/
+**/__pycache__/

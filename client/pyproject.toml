@@ -1,19 +1,12 @@
 [tool.poetry]
-name = "proto-chain"
+name = "proto-chain-client"
 version = "0.1.0"
 description = ""
 authors = ["Platon Floria <platon.floria@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-ecdsa = "^0.18.0"
-fire = "^0.4.0"
-fastapi = "^0.82.0"
-uvicorn = "^0.18.3"
-pydantic = "^1.10.2"
-PyYAML = "^6.0"
-requests = "^2.28.1"
-grpcio-tools = "^1.48.1"
+proto-chain = {path = "../python"}
 
 [tool.poetry.dev-dependencies]
 

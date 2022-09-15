@@ -3,8 +3,8 @@ from hashlib import sha256
 
 from ecdsa import SigningKey, SECP256k1
 
-from transaction import SignedTransaction
-from block import SignedBlock
+from proto_chain.transaction import SignedTransaction
+from proto_chain.block import SignedBlock
 
 
 class Account:

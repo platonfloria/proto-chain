@@ -3,7 +3,7 @@ from queue import Queue, Empty
 
 import grpc
 
-import rpc_pb2, rpc_pb2_grpc
+from proto_chain import rpc_pb2, rpc_pb2_grpc
 
 
 class RPC(rpc_pb2_grpc.RPCServicer):

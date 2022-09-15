@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-import transaction
+from proto_chain import transaction
 
 
 class Api(FastAPI):

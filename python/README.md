@@ -1,5 +1,3 @@
-# ToyCoin
-
 ## Run nodes
 Run the following commands in different terminals
 ```

@@ -3,7 +3,7 @@ from hashlib import sha256
 
 from ecdsa import VerifyingKey, SECP256k1
 
-import rpc_pb2
+from proto_chain import rpc_pb2
 
 
 class Transaction:

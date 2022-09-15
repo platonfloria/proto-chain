@@ -3,9 +3,9 @@ from hashlib import sha256
 
 from ecdsa import VerifyingKey, SECP256k1
 
-import rpc_pb2
+from proto_chain import rpc_pb2
 
-from transaction import SignedTransaction
+from proto_chain.transaction import SignedTransaction
 
 
 class Block:

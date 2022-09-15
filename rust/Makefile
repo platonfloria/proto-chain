@@ -1,4 +1,4 @@
-run_node:
+run:
 	set -e ;\
 	peers=`echo $(peers) | tr -d '[]'`;\
 	if [ -z $$peers ]; then\

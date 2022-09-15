@@ -8,12 +8,12 @@ import yaml
 
 import rpc_pb2, rpc_pb2_grpc
 
-import rpc
-from api import api
-from account import Account
-from block import Block, SignedBlock
-from blockchain import BlockChain
-from transaction import Transaction, SignedTransaction
+from proto_chain import rpc
+from proto_chain.api import api
+from proto_chain.account import Account
+from proto_chain.block import Block, SignedBlock
+from proto_chain.blockchain import BlockChain
+from proto_chain.transaction import Transaction, SignedTransaction
 
 
 DIFFICULTY = 21

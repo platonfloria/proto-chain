@@ -2,10 +2,10 @@ import fire
 import grpc
 import requests
 
-import rpc_pb2, rpc_pb2_grpc
+from proto_chain import rpc_pb2, rpc_pb2_grpc
 
-from account import Account
-from transaction import Transaction
+from proto_chain.account import Account
+from proto_chain.transaction import Transaction
 
 
 def main(method, data=None):
