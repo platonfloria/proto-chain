@@ -19,6 +19,7 @@ const DIFFICULTY: u32 = 16;
 pub struct Runtime {
     stop: Listener,
     account: Mutex<Account>,
+    async_runtime: Arc<AsyncRuntime>,
     transaction_queues: rpc::TransactionQueues,
     block_queues: rpc::BlockQueues,
     blockchain: Mutex<Blockchain>,
@@ -30,6 +31,7 @@ pub struct Runtime {
 impl Runtime {
     pub fn new(
         account: Account,
+        async_runtime: Arc<AsyncRuntime>,
         transaction_queues: rpc::TransactionQueues,
         block_queues: rpc::BlockQueues,
         stop: Listener,
@@ -37,6 +39,7 @@ impl Runtime {
         Self {
             stop,
             account: Mutex::new(account),
+            async_runtime,
             transaction_queues,
             block_queues,
             blockchain: Mutex::new(Blockchain::new()),
@@ -49,12 +52,12 @@ impl Runtime {
         &self.blockchain
     }
 
-    pub fn sync(&mut self, address: String, peers: Vec<String>) {
+    pub async fn sync(&self, address: String, peers: Vec<String>) {
         let mut signed_blocks = Vec::new();
         if peers.is_empty() {
             signed_blocks.push(self.create_genesis_block())
         } else {
-            signed_blocks.extend(self.get_blocks_from_peers(&peers, &address))
+            signed_blocks.extend(rpc::get_blocks_from_peers(&peers, &address).await.unwrap());
         }
         for signed_block in signed_blocks.into_iter() {
             self.append_block(signed_block)
@@ -64,7 +67,7 @@ impl Runtime {
         }
     }
 
-    pub fn run(self: Arc<Self>, async_runtime: Arc<AsyncRuntime>, mut txn_receiver: Receiver<SignedTransaction>) -> (impl Future<Output = ()>, JoinHandle<()>) {
+    pub fn run(self: Arc<Self>, mut txn_receiver: Receiver<SignedTransaction>) -> (impl Future<Output = ()>, JoinHandle<()>) {
         let task = {
             let this = self.clone();
             let stop = self.stop.clone();
@@ -80,7 +83,7 @@ impl Runtime {
             let stop = self.stop.clone();
             std::thread::spawn(move || {
                 while !stop.is_triggered() {
-                    self.mine(async_runtime.clone());
+                    self.mine();
                     thread::sleep(time::Duration::from_millis(100));
                 }
             })
@@ -118,14 +121,14 @@ impl Runtime {
 
     fn append_block(&self, signed_block: SignedBlock) {
         println!("NEW BLOCK {}", signed_block.block().number());
-        for (address, balance) in self.blockchain.lock().unwrap().balances() {
-            println!("{}: {}", &address[..4], balance);
-        }
         let mut transaction_pool = self.transaction_pool.lock().unwrap();
         for tx in signed_block.block().transactions() {
             transaction_pool.remove(&tx.hash());
         }
         self.blockchain.lock().unwrap().append_block(signed_block);
+        for (address, balance) in self.blockchain.lock().unwrap().balances() {
+            println!("{}: {}", &address[..4], balance);
+        }
     }
 
     pub async fn add_transaction(&self, txn: SignedTransaction) {
@@ -160,7 +163,7 @@ impl Runtime {
         }
     }
 
-    pub fn mine(&self, async_runtime: Arc<AsyncRuntime>) {
+    pub fn mine(&self) {
         self.interrupt_mining_event.store(false, Ordering::Relaxed);
         let mut next_block = self.form_next_block();
         let solution = next_block.find_solution(self.interrupt_mining_event.clone());
@@ -172,7 +175,7 @@ impl Runtime {
             {
                 let block_queues = self.block_queues.clone();
                 let signed_block = signed_block.pb();
-                async_runtime.spawn(async move {
+                self.async_runtime.spawn(async move {
                     let mut remaining = Vec::new();
                     let mut block_queues = block_queues.lock().await;
                     for tx in block_queues.drain(..) {
@@ -218,7 +221,7 @@ impl Runtime {
     }
 
     pub fn add_peer(&self, peer: &str) {
-
+        println!("ADD PEER {}", peer);
     }
 //     def add_peer(self, peer):
 //         print("ADD PEER", peer)
@@ -233,7 +236,7 @@ impl Runtime {
 //             for thread in self._peer_threads[peer]['threads']:
 //                 thread.start()
 
-    fn get_blocks_from_peers(&self, peers: &Vec<String>, address: &str) -> Vec<SignedBlock> {
+    fn get_blocks_from_peers(&self, peers: &[String], address: &str) -> Vec<SignedBlock> {
         Vec::new()
     }
 //     def _get_blocks_from_peers(self, peers, address):

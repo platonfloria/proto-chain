@@ -11,7 +11,10 @@ mod rpc_pb2 {
 }
 pub use rpc_pb2::*;
 
-use crate::runtime::Runtime;
+use crate::{
+    runtime::Runtime,
+    block::SignedBlock as SignedBlockInternal
+};
 
 type TransactionChannel = mpsc::Sender<Result<SignedTransaction, Status>>;
 pub type TransactionQueues = Arc<Mutex<Vec<TransactionChannel>>>;
@@ -95,4 +98,15 @@ impl rpc_server::Rpc for RPC {
         };
         Ok(Response::new(reply))
     }
+}
+
+pub async fn get_blocks_from_peers(peers: &[String], address: &str) -> Result<Vec<SignedBlockInternal>, Box<dyn std::error::Error>> {
+    let mut blocks = Vec::new();
+    for peer in peers {
+        blocks.clear();
+        let mut client = rpc_client::RpcClient::connect(format!["http://{}", peer]).await?;
+        let response = client.sync(Request::new(SyncRequest {address: address.to_owned()})).await?;
+        blocks.extend(response.into_inner().blocks.iter().map(|b| SignedBlockInternal::from_pb(b)));
+    }
+    Ok(blocks)
 }

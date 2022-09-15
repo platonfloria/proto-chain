@@ -123,18 +123,18 @@ impl Block {
             reward: Some(self.reward.pb())
         }
     }
+
+    pub fn from_pb(pb: &rpc::Block) -> Self {
+        Self {
+            number: pb.number,
+            previous_block_hash: Some(pb.previous_block_hash.to_owned()),
+            transactions: pb.transactions.iter().map(|t| Arc::new(SignedTransaction::from_pb(t))).collect(),
+            difficulty: pb.difficulty,
+            reward: Arc::new(SignedTransaction::from_pb(pb.reward.as_ref().unwrap())),
+            deltas: HashMap::new(),
+        }
+    }
 }
-//     @classmethod
-//     def from_pb(cls, pb):
-//         inst = cls(
-//             number=pb.number,
-//             previous_block_hash=None if pb.number == 0 else pb.previous_block_hash,
-//             difficulty=pb.difficulty,
-//             reward=SignedTransaction.from_pb(pb.reward)
-//         )
-//         for transaction in pb.transactions:
-//             inst.append_transaction(SignedTransaction.from_pb(transaction))
-//         return inst
 
 pub struct SignedBlock {
     block: Block,
@@ -188,10 +188,12 @@ impl SignedBlock {
             signature: self.signature.to_owned()
         }
     }
+
+    pub fn from_pb(pb: &rpc::SignedBlock) -> Self {
+        Self {
+            block: Block::from_pb(pb.block.as_ref().unwrap()),
+            solution: Some(pb.solution),
+            signature: pb.signature.to_owned(),
+        }
+    }
 }
-//     @classmethod
-//     def from_pb(cls, pb):
-//         return cls(
-//             block=Block.from_pb(pb.block),
-//             signature=pb.signature
-//         )

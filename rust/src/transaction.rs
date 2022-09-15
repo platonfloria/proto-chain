@@ -66,18 +66,17 @@ impl Transaction {
             nonce: self.nonce.unwrap_or(0)
         }
     }
-}
 
-//     @classmethod
-//     def from_pb(cls, pb):
-//         inst = cls(
-//             origin=pb.origin,
-//             destination=pb.destination,
-//             amount=pb.amount,
-//             data=pb.data,
-//         )
-//         inst.set_nonce(pb.nonce)
-//         return inst
+    pub fn from_pb(pb: &rpc::Transaction) -> Self {
+        Self {
+            origin: Some(pb.origin.to_owned()),
+            destination: pb.destination.to_owned(),
+            amount: pb.amount,
+            data: pb.data.to_owned(),
+            nonce: Some(pb.nonce),
+        }
+    }
+}
 
 //     def __repr__(self):
 //         return f"From {self._origin[:4]} to {self._destination[:4]} {self._amount}"
@@ -130,11 +129,11 @@ impl SignedTransaction {
             signature: self.signature.to_owned(),
         }
     }
-}
 
-//     @classmethod
-//     def from_pb(cls, pb):
-//         return cls(
-//             transaction=Transaction.from_pb(pb.transaction),
-//             signature=pb.signature
-//         )
+    pub fn from_pb(pb: &rpc::SignedTransaction) -> Self {
+        Self {
+            transaction: Transaction::from_pb(pb.transaction.as_ref().unwrap()),
+            signature: pb.signature.to_owned(),
+        }
+    }
+}
