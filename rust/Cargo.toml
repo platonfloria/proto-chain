@@ -7,6 +7,7 @@ authors = ["Platon Floria <platon.floria@gmail.com>"]
 [dependencies]
 axum = "0.5.16"
 clap = { version = "3.1.6", features = ["derive"] }
+futures = "0.3.24"
 hex = "0.4.3"
 indexmap = "1.9.1"
 k256 = "0.11.4"

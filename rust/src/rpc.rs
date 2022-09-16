@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tonic::{transport::Server, Request, Response, Status};
 use tokio::sync::{mpsc, Mutex};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 use triggered::Listener;
 
 
@@ -16,9 +16,9 @@ use crate::{
     block::SignedBlock as SignedBlockInternal
 };
 
-type TransactionChannel = mpsc::Sender<Result<SignedTransaction, Status>>;
+pub type TransactionChannel = mpsc::Sender<Result<SignedTransaction, Status>>;
 pub type TransactionQueues = Arc<Mutex<Vec<TransactionChannel>>>;
-type BlockChannel = mpsc::Sender<Result<SignedBlock, Status>>;
+pub type BlockChannel = mpsc::Sender<Result<SignedBlock, Status>>;
 pub type BlockQueues = Arc<Mutex<Vec<BlockChannel>>>;
 
 
@@ -83,7 +83,6 @@ impl rpc_server::Rpc for RPC {
     ) -> Result<Response<Self::BlockFeedStream>, Status> {
         let (tx, rx) = mpsc::channel(1);
         self.block_queues.lock().await.push(tx);
-        println!("PUSHED {:?}", self.block_queues.lock().await.len());
 
         Ok(Response::new(ReceiverStream::new(rx)))
     }
@@ -105,8 +104,24 @@ pub async fn get_blocks_from_peers(peers: &[String], address: &str) -> Result<Ve
     for peer in peers {
         blocks.clear();
         let mut client = rpc_client::RpcClient::connect(format!["http://{}", peer]).await?;
-        let response = client.sync(Request::new(SyncRequest {address: address.to_owned()})).await?;
+        let response = client.sync(SyncRequest {address: address.to_owned()}).await?;
         blocks.extend(response.into_inner().blocks.iter().map(|b| SignedBlockInternal::from_pb(b)));
     }
     Ok(blocks)
+}
+
+pub async fn listen_to_new_blocks_from_peer(address: &str, tx: Arc<Mutex<Option<BlockChannel>>>) {
+    let mut client = rpc_client::RpcClient::connect(format!["http://{}", address]).await.expect("Failed to connect");
+    let mut stream = client.block_feed(BlockFeedRequest {}).await.unwrap().into_inner();
+    while let Some(item) = stream.next().await {
+        tx.lock().await.as_ref().unwrap().send(item).await;
+    }
+}
+
+pub async fn listen_to_new_transactions_from_peer(address: &str, tx: Arc<Mutex<Option<TransactionChannel>>>) {
+    let mut client = rpc_client::RpcClient::connect(format!["http://{}", address]).await.expect("Failed to connect");
+    let mut stream = client.transaction_feed(TransactionFeedRequest {}).await.unwrap().into_inner();
+    while let Some(item) = stream.next().await {
+        tx.lock().await.as_ref().unwrap().send(item).await;
+    }
 }
