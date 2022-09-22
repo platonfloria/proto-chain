@@ -89,6 +89,6 @@ async fn get_transaciton(Path(transaction_hash): Path<String>, runtime: Arc<Runt
 
 async fn post_transaciton(Json(payload): Json<SignedTransaction>, txn_sender: Sender<SignedTransaction>) -> (StatusCode, Json<String>) {
     let hash = payload.hash();
-    txn_sender.send(payload).await;
+    txn_sender.send(payload).await.expect("Unable to process transaction");
     (StatusCode::ACCEPTED, Json(hash))
 }

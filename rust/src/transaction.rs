@@ -7,7 +7,7 @@ use serde::{Serialize, Deserialize};
 use crate::rpc;
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Transaction {
     origin: Option<String>,
     destination: String,
@@ -82,7 +82,7 @@ impl Transaction {
 //         return f"From {self._origin[:4]} to {self._destination[:4]} {self._amount}"
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SignedTransaction {
     transaction: Transaction,
     signature: String,

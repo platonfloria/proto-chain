@@ -73,7 +73,7 @@ impl Runtime {
             self.append_block(signed_block)
         }
         for peer in peers.iter() {
-            self.add_peer(peer)
+            self.add_peer(peer);
         }
     }
 
@@ -162,7 +162,6 @@ impl Runtime {
         let mut remaining = Vec::new();
         let mut transaction_queues = self.transaction_queues.lock().await;
         for tx in transaction_queues.drain(..) {
-            println!("{}", tx.is_closed());
             if let Ok(_) = tx.send(Ok(txn.pb())).await {
                 remaining.push(tx);
             }
@@ -206,7 +205,6 @@ impl Runtime {
                     let mut remaining = Vec::new();
                     let mut block_queues = block_queues.lock().await;
                     for tx in block_queues.drain(..) {
-                        println!("{}", tx.is_closed());
                         if let Ok(_) = tx.send(Ok(signed_block.clone())).await {
                             remaining.push(tx);
                         }
