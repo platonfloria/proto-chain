@@ -125,14 +125,16 @@ impl Block {
     }
 
     pub fn from_pb(pb: &rpc::Block) -> Self {
-        Self {
+        let mut this = Self {
             number: pb.number,
             previous_block_hash: Some(pb.previous_block_hash.to_owned()),
-            transactions: pb.transactions.iter().map(|t| Arc::new(SignedTransaction::from_pb(t))).collect(),
+            transactions: Vec::new(),
             difficulty: pb.difficulty,
             reward: Arc::new(SignedTransaction::from_pb(pb.reward.as_ref().unwrap())),
             deltas: HashMap::new(),
-        }
+        };
+        pb.transactions.iter().for_each(|t| this.append_transaction(Arc::new(SignedTransaction::from_pb(t))));
+        this
     }
 }
 
