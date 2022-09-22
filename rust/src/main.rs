@@ -30,10 +30,10 @@ struct Args {
 
 #[derive(Deserialize)]
 struct NodeConfig {
-    pub ipaddress: String,
-    pub api_port: u32,
-    pub rpc_port: u32,
-    pub account: String,
+    ipaddress: String,
+    api_port: u32,
+    rpc_port: u32,
+    account: String,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         stop_listener.clone()
     );
     let runtime = Arc::new(runtime);
-    let runtime_task = Runtime::get_task(runtime.clone(), txn_receiver, transaction_receiver, block_receiver);
+    let runtime_task = runtime.clone().get_task(txn_receiver, transaction_receiver, block_receiver);
 
     let rpc_server = rpc::RPC::new(&node_rpc_port, runtime.clone(), transaction_queues.clone(), block_queues.clone(), stop_listener.clone());
     let api_server = api::API::new(&node_api_port, runtime.clone(), txn_sender, stop_listener.clone());
@@ -103,8 +103,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
     };
 
-    runtime.sync(format!("{}:{}", node_ipaddress, node_rpc_port), peers);
-    let runtime_thread = Runtime::run(runtime.clone());
+    runtime.sync(&format!("{}:{}", node_ipaddress, node_rpc_port), &peers);
+    let runtime_thread = runtime.run();
 
     async_thread.join();
     runtime_thread.join();

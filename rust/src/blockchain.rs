@@ -25,8 +25,8 @@ impl Blockchain {
         &self.blocks
     }
 
-    pub fn get_block(&self, block_number: usize) -> Option<&SignedBlock> {
-        self.blocks.get(block_number)
+    pub fn get_block(&self, block_number: u32) -> Option<&SignedBlock> {
+        self.blocks.get(block_number as usize)
     }
 
     pub fn get_last_block(&self) -> Option<&SignedBlock> {

@@ -110,7 +110,7 @@ pub async fn get_blocks_from_peers(peers: &[String], address: &str) -> Result<Ve
     Ok(blocks)
 }
 
-pub async fn listen_to_new_blocks_from_peer(address: &str, tx: Arc<Mutex<Option<BlockChannel>>>) {
+pub async fn listen_to_new_blocks_from_peer(address: &str, tx: &Mutex<Option<BlockChannel>>) {
     let mut client = rpc_client::RpcClient::connect(format!["http://{}", address]).await.expect("Failed to connect");
     let mut stream = client.block_feed(BlockFeedRequest {}).await.unwrap().into_inner();
     while let Some(item) = stream.next().await {
@@ -118,7 +118,7 @@ pub async fn listen_to_new_blocks_from_peer(address: &str, tx: Arc<Mutex<Option<
     }
 }
 
-pub async fn listen_to_new_transactions_from_peer(address: &str, tx: Arc<Mutex<Option<TransactionChannel>>>) {
+pub async fn listen_to_new_transactions_from_peer(address: &str, tx: &Mutex<Option<TransactionChannel>>) {
     let mut client = rpc_client::RpcClient::connect(format!["http://{}", address]).await.expect("Failed to connect");
     let mut stream = client.transaction_feed(TransactionFeedRequest {}).await.unwrap().into_inner();
     while let Some(item) = stream.next().await {

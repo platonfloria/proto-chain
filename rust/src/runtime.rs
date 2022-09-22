@@ -26,7 +26,7 @@ pub struct Runtime {
     block_queues: rpc::BlockQueues,
     blockchain: Mutex<Blockchain>,
     transaction_pool: Mutex<IndexMap<String, Arc<SignedTransaction>>>,
-    interrupt_mining_event: Arc<AtomicBool>,
+    interrupt_mining_event: AtomicBool,
     block_sender: Arc<AsyncMutex<Option<rpc::BlockChannel>>>,
     transaction_sender: Arc<AsyncMutex<Option<rpc::TransactionChannel>>>,
 }
@@ -49,7 +49,7 @@ impl Runtime {
             block_queues,
             blockchain: Mutex::new(Blockchain::new()),
             transaction_pool: Mutex::new(IndexMap::new()),
-            interrupt_mining_event: Arc::new(AtomicBool::new(false)),
+            interrupt_mining_event: AtomicBool::new(false),
             transaction_sender: Arc::new(AsyncMutex::new(Some(transaction_sender))),
             block_sender: Arc::new(AsyncMutex::new(Some(block_sender))),
         }
@@ -59,14 +59,14 @@ impl Runtime {
         &self.blockchain
     }
 
-    pub fn sync(&self, address: String, peers: Vec<String>) {
+    pub fn sync(&self, address: &str, peers: &[String]) {
         let mut signed_blocks = Vec::new();
         if peers.is_empty() {
             signed_blocks.push(self.create_genesis_block())
         } else {
             let peers = peers.clone();
             signed_blocks.extend(self.async_runtime.block_on(async move {
-                rpc::get_blocks_from_peers(&peers, &address).await.unwrap()
+                rpc::get_blocks_from_peers(peers, address).await.unwrap()
             }));
         }
         for signed_block in signed_blocks.into_iter() {
@@ -193,7 +193,7 @@ impl Runtime {
     pub fn mine(&self) {
         self.interrupt_mining_event.store(false, Ordering::Relaxed);
         let mut next_block = self.form_next_block();
-        let solution = next_block.find_solution(self.interrupt_mining_event.clone());
+        let solution = next_block.find_solution(&self.interrupt_mining_event);
         if !self.interrupt_mining_event.load(Ordering::Relaxed) {
             println!("BLOCK FOUND {}", next_block.number());
             let mut signed_block = self.account.lock().unwrap().sign_block(next_block);
@@ -255,11 +255,11 @@ impl Runtime {
         {
             let peer = peer.clone();
             self.async_runtime.spawn(async move {
-                rpc::listen_to_new_transactions_from_peer(&peer, transaction_sender).await;
+                rpc::listen_to_new_transactions_from_peer(&peer, &transaction_sender).await;
             });
         }
         self.async_runtime.spawn(async move {
-            rpc::listen_to_new_blocks_from_peer(&peer, block_sender).await;
+            rpc::listen_to_new_blocks_from_peer(&peer, &block_sender).await;
         });
     }
 }

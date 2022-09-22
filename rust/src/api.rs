@@ -44,23 +44,20 @@ impl API {
             let runtime = self.runtime.clone();
             |block_number| get_block_transactions(block_number, runtime)
         }))
-        .route("/transaction/:transaction_hash", get(
-            |txn_hash| get_transaciton(txn_hash, self.runtime)
-        ))
-        .route("/transaction", post(
-            move |txn| post_transaciton(txn, self.txn_sender)
-        ));
+        .route("/transaction/:transaction_hash", get({
+            let runtime = self.runtime.clone();
+            |txn_hash| get_transaciton(txn_hash, runtime)
+        }))
+        .route("/transaction", post({
+            let txn_sender = self.txn_sender.clone();
+            move |txn| post_transaciton(txn, txn_sender)
+        }));
 
         let addr = format!("[::1]:{}", self.port).parse()?;
-
-        {
-            let stop = self.stop.take().unwrap();
-            axum::Server::bind(&addr)
-                .serve(app.into_make_service())
-                .with_graceful_shutdown(stop)
-                .await
-                .unwrap();
-        }
+        axum::Server::bind(&addr)
+            .serve(app.into_make_service())
+            .with_graceful_shutdown(self.stop.take().unwrap())
+            .await?;
 
         Ok(())
     }
@@ -74,7 +71,7 @@ async fn block_count(runtime: Arc<Runtime>) -> (StatusCode, Json<Option<u32>>) {
     }
 }
 
-async fn get_block_transactions(Path(block_number): Path<usize>, runtime: Arc<Runtime>) -> (StatusCode, Json<Option<Vec<Arc<SignedTransaction>>>>) {
+async fn get_block_transactions(Path(block_number): Path<u32>, runtime: Arc<Runtime>) -> (StatusCode, Json<Option<Vec<Arc<SignedTransaction>>>>) {
     match runtime.blockchain().lock().unwrap().get_block(block_number){
         Some(signed_block) => {
             (StatusCode::FOUND, Json(Some(signed_block.block().transactions().iter().map(|t| t.clone()).collect::<Vec<Arc<SignedTransaction>>>())))

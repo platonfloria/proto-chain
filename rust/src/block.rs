@@ -72,15 +72,15 @@ impl Block {
         hex::encode(hasher.finalize())
     }
 
-    pub fn find_solution(&mut self, interrupt_event: Arc<AtomicBool>) -> u32 {
+    pub fn find_solution(&mut self, interrupt_event: &AtomicBool) -> u32 {
         let mut candidate = 0;
-        while !self.check_solution(candidate) && !interrupt_event.load(Ordering::Relaxed) {
+        while !self.check_solution(&candidate) && !interrupt_event.load(Ordering::Relaxed) {
             candidate += 1;
         }
         candidate
     }
 
-    fn check_solution(&self, solution: u32) -> bool {
+    fn check_solution(&self, solution: &u32) -> bool {
         if self.previous_block_hash == None && self.number == 0 {
             true
         } else {
@@ -175,7 +175,7 @@ impl SignedBlock {
         let vk = VerifyingKey::from_sec1_bytes(&bytes).unwrap();
         let signature: Signature = Signature::from_bytes(&hex::decode(&self.signature).unwrap()).unwrap();
         match (vk.verify(&hex::decode(self.block.hash()).unwrap(), &signature), self.solution) {
-            (Ok(_), Some(solution)) => self.block.check_solution(solution),
+            (Ok(_), Some(solution)) => self.block.check_solution(&solution),
             (Ok(_), None) => true,
             (Err(_), _) => false
         }
